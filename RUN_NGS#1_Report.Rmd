@@ -1,0 +1,588 @@
+---
+title: "Influenza Group Sequencing Report"
+author: "Marta Maria Ciucani"
+date: "`r format(Sys.time(), '%d/%m/%Y')`"
+output:
+  pdf_document:
+    toc: yes
+    fig_width: 7
+    fig_caption: yes
+    highlight: tango
+    extra_dependencies: ["float"]
+  html_document: default
+header-includes:
+   - \usepackage{floatrow}
+   - \floatsetup[figure]{capposition=top}
+subtitle: Statens Serum Institut
+---
+
+```{r parameters, include=FALSE}
+run_nr = "NGS1"
+base_dir = "Path/to/NGS/run"
+contamination = "Yes|No"
+rerun = "Yes|No"
+
+dir_reads = paste(base_dir,run_nr,"reads", sep="/")
+dir_hu = paste(base_dir,run_nr,"run/human", sep="/") 
+dir_sw = paste(base_dir, run_nr,"run/swine", sep="/") 
+dir_av = paste(base_dir, run_nr,"run/avian", sep="/") 
+dir_co = paste(base_dir, run_nr,"run/controls", sep="/") 
+pw_hu = paste(base_dir, run_nr,"run/human","Pairwise_dist", sep="/")
+pw_sw = paste(base_dir, run_nr,"run/swine","Pairwise_dist", sep="/")
+pw_av = paste(base_dir, run_nr,"run/avian","Pairwise_dist", sep="/")
+gt_av=paste(base_dir, run_nr,"run/avian","full_genotypes", sep="/")
+
+```
+
+```{r setup, include=FALSE}
+#list of packages needed
+packages = c("tools", "data.table", "ggplot2", "ggpubr", "tidyverse","knitr", "kableExtra", "viridis", "here", "gridExtra", "tinytex", "scales")
+
+## Now load or install&load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+
+opts_chunk$set(echo = FALSE)
+opts_knit$set(root.dir = dir_reads, echo = TRUE, fig.cap = " ")
+opts <- options(knitr.kable.NA = "**")
+
+
+```
+
+```{r functions}
+#Function to find failed samples
+find_failed_samples <- function(dataframe) {
+  failed=NULL
+  res <- data.frame(Value = character(), Row_Number = integer(), stringsAsFactors = FALSE)
+  for (value in subset(dataframe, trimws(V1) != "")$V1) {
+    row_number <- which(dataframe == value, arr.ind = TRUE)[1, 1]
+    res <- rbind(res, data.frame(Value = value, Row_Number = row_number))
+  }
+  precise_idx <- sum(str_detect(res$Value, "Precise genotypes:"))
+  uniquely_idx <- sum(str_detect(res$Value, "Uniquely"))
+  indeterminate_idx <- sum(str_detect(res$Value, "Indeterminate"))
+  testo= paste("There are", length(failed),"failed samples")
+  empty <- data.table(Samples = character(), Outcome = character())
+  if (precise_idx == 1) {
+    failed= c(dataframe$V2[(res[res$Value=="Empty samples:",2]+1):(res[res$Value=="Precise genotypes:",2] -1)])
+    empty <- rbind(empty, data.table(Samples = failed, Outcome = "Failed"))
+  } else if ((precise_idx == 0) & (uniquely_idx == 1)) {
+    failed= c(dataframe$V2[(res[res$Value=="Empty samples:",2]+1): (res[res$Value=="Uniquely matching genotypes:",2] -1)])
+    empty <- rbind(empty, data.table(Samples = failed, Outcome = "Failed"))
+  } else if ((precise_idx == 0) & (uniquely_idx== 0) & (indeterminate_idx == 1)) {
+    failed= c(dataframe$V2[(res[res$Value=="Empty samples:",2]+1): (res[res$Value=="Indeterminate genotypes:",2] -1)])
+    empty <- rbind(empty, data.table(Samples = failed, Outcome = "Failed"))
+  } else if ((precise_idx == 0) & (uniquely_idx == 0) & (indeterminate_idx == 0) & (sum(str_detect(res$Value, "New")) == 1)) {
+    failed= c(dataframe$V2[(res[res$Value=="Empty samples:",2]+1): (res[res$Value=="New Genotypes:",2] -1)])
+    empty <- rbind(empty, data.table(Samples = failed, Outcome = "Failed"))
+  }
+}
+
+#function to determine the success rate
+success_rate <- function(dataframe) {
+  data_new1 <- dataframe
+  data_new1[data_new1 == ""] <- NA
+  data_new2 <- data_new1 %>%
+    fill(V1, .direction = 'down') %>%
+    filter(!is.na(V2))
+  
+  succ_rate <- data_new2[,1:3] %>%
+    group_by(V1) %>%
+    summarise(repeats = n())
+  segmentss <- data_new1 %>% fill(V1, .direction = 'down')  %>% fill(V2, .direction = 'down')  %>% drop_na(V3,V6) 
+  #missing_seg = segmentss[,2:4] %>% replace_na(list(V3 = "NA")) %>% group_by(V4) %>% filter(V4 == "No segment")
+  missing_seg= data_new1 %>% fill(V1, .direction = 'down')  %>% fill(V2, .direction = 'down') %>%filter(V4 == "No segment")
+  #plot missing segments
+  if (nrow(missing_seg) > 0) {
+  mis1=missing_seg %>% group_by(V3) %>% ggplot(aes(x=V3, fill=V3)) + geom_bar(stat="count") +
+    theme_minimal() + theme(legend.title = element_blank()) +ylab("Number of missing segments") + xlab("Segments")
+  
+  mis2=missing_seg %>% group_by(V2) %>% ggplot(aes(x=V3, y=substr(V2, 1, 25), color=V3)) + geom_point() +
+    theme_minimal() + theme(legend.title = element_blank()) +ylab("Samples") + xlab("Missing Segments") + scale_y_discrete(labels = label_wrap(15))
+  mis = ggarrange(mis1,mis2, common.legend = T) } else {
+  mis = "There are no failed segments"  
+  }
+  succ_rate$V3 <- ifelse(grepl("Empty samples:", succ_rate$V1), "Failed",
+                         ifelse(grepl("Precise", succ_rate$V1), "Full Genotype",
+                                ifelse(grepl("Indeterminate", succ_rate$V1), "Partial Genotype",
+                                       ifelse(grepl("Uniquely", succ_rate$V1), "Partial Genotype",
+                                              ifelse(grepl("New", succ_rate$V1), "New Genotypes:", "")))))
+  # Plot the samples success rate
+  plot_data <- succ_rate[, 2:3] %>%
+    group_by(V3) %>%
+    summarise(repeats = sum(repeats)) %>%
+    arrange(desc(V3))
+  palette1 = c("orange", "green", "red", "purple")
+  palette_names = setNames(object = palette1, nm = plot_data$V3)
+  plot <- plot_data %>% mutate(prop = repeats / sum(plot_data$repeats) *100) %>%mutate(ypos = cumsum(prop) - 0.5*prop ) %>%
+    ggplot(aes(x = "", y = repeats, fill = V3)) +
+    geom_bar(stat = "identity", color = "white") +coord_polar("y") +
+    theme_void() +
+    theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_blank()) +
+    ylab(" ") + xlab(" ") +
+    scale_fill_manual(values = palette_names, na.value = palette_names["NA"]) +
+    geom_text(x=1.5, aes(y = repeats/2 + c(0, cumsum(repeats)[-length(repeats)]), label=repeats))
+  if (is.ggplot(mis) == TRUE) { 
+    pp = ggarrange(plot,mis,nrow=2)
+    plot2= pp } else {plot2=plot}
+  #find genotypes:
+  precise = data_new2 %>% filter(V1=="Precise genotypes:") %>% setNames(c("Precise","Sample","Full Genotype"))
+  new= data_new2 %>% filter(V1=="New genotypes:") %>% setNames(c("New","Sample","New Genotype"))
+  uniqueg= data_new2 %>% filter(V1=="Uniquely matching genotypes:") %>% setNames(c("New","Sample","Partial Genotype"))
+  indetg = data_new2 %>% filter(V1=="Indeterminate genotypes:") %>% setNames(c("New","Sample","Indeterminate Genotype"))
+  return(list(succ_rate=succ_rate, plot=plot2, precise=precise, new=new, uniqueg=uniqueg, indetg=indetg))
+}
+```
+
+\newpage
+
+# Run `r run_nr`
+
+### *Overall run*
+
+```{r samples_number, comment=""}
+#opts_knit$set(root.dir = "dir_reads", echo = TRUE)
+folder_list <- list.dirs("./", full.names = FALSE, recursive = FALSE)
+
+# Create an empty data table to store the results
+samples_nr <- data.table(Folder = character(), SamplesNr = numeric())
+
+# Iterate over each folder
+for (folder in folder_list) {
+  # Get the base name of the folder
+  BN <- str_to_title(basename(folder))
+  # List files in the folder
+  files <- list.files(path = folder, full.names = TRUE)
+  # Calculate the count and division
+  count <- length(files)
+  division <- count / 2
+  # Add the results to the data table
+  samples_nr <- rbind(samples_nr, data.table(Folder = BN, SamplesNr = division))
+}
+total_samples = sum(samples_nr$SamplesNr)
+```
+
+In this run we sequenced in total `r total_samples` samples.\
+\
+
+```{r samples_nr, echo=FALSE, fig.cap="\\label{fig:fig1}Type and Number of Samples"}
+# Print the plot to show the count of samples in each folder.
+
+ggplot(samples_nr, aes(y=Folder,x=SamplesNr, fill=Folder)) + geom_bar(stat="identity") + theme_bw()  + ylab("Samples Type") + xlab("Number of Samples") + scale_fill_viridis(discrete = TRUE) +
+  geom_text(aes(label=SamplesNr), position=position_dodge(width=0.9), hjust=-0.25)
+```
+
+-   **Need to re-run: `r rerun`**
+-   **Contamination: `r contamination`**
+
+## **Controls**
+
+```{r controls, echo=FALSE}
+controls_nr= samples_nr[samples_nr$Folder=="Controls",2]
+```
+
+We had `r controls_nr` controls.\
+
+
+```{r detect_controls_cont}
+opts_knit$set(root.dir = dir_co, echo = TRUE)
+report = list.files(dir_co, pattern="report_")
+report_co = read.delim2(paste(dir_co,"/",report, sep=""), sep="\t", header=F, col.names = c("V1", "V2", "V3"))
+filtered_df <- subset(report_co, !grepl("Mbp|Kbp", V1))[1:2]
+filtered_df = filtered_df[!apply(filtered_df == "", 1, all), ]
+  
+filtered_df$V2 <- sub(":.*", "", filtered_df$V2)
+filtered_df$V3 <- str_split_fixed(filtered_df$V2, " ",2)[,2]
+filtered_df$V2 <- str_split_fixed(filtered_df$V2, " ",2)[,1]
+  
+filtered_df2 <- filtered_df %>% mutate(V1 = ifelse(V1 == "", NA, V1), V2 = ifelse(V2 == "", "PASS", V2),V3 = ifelse(V3 == "", NA, V3) )
+
+filled_df <- fill(filtered_df2, V1, .direction = "down") %>% drop_na(V3)
+df = filled_df %>% filter(V2 == "PASS") %>% group_by(V1) %>% summarise(n=n()) 
+if (nrow(df) == 0) {contamination_controls = "The influenza negative controls showed no sign of contamination from other influenza samples in the run."
+} else if (nrow(df) > 0) {
+  cont_controls = paste(df$V1)
+  contamination_controls ="The controls that positive for influenza are: "
+  }
+
+```
+
+\textcolor{red}{Note:}`r contamination_controls`
+`r cont_controls`
+\pagebreak
+
+## **Human samples**
+
+```{r detect_human}
+if (sum(str_detect(folder_list,"^human$")) == 0) {
+  hu ="There are no human surveillance samples in this run." 
+  } else if (sum(str_detect(folder_list,"^human$")) > 0) {
+  human_nr= samples_nr[samples_nr$Folder=="Human",2]
+  hu = paste0("There are ",human_nr," human samples in this run.")
+  opts_knit$set(root.dir = dir_hu, echo = TRUE)
+  genotypes_hu = list.files(dir_hu, pattern="genotypes_")
+  genotypes_hu = paste(dir_hu,"/",genotypes_hu, sep="")
+  df_hu=read.delim(genotypes_hu, sep="\t", header=F, col.names = c("V1", "V2", "V3", "V4", "V5", "V6"))
+  #find how many human Influenza A and B samples are in the run.
+  nr_ia = length(grep("IA-", df_hu$V2))
+  nr_ib = length(grep("IB-", df_hu$V2))
+
+  inf_human = data.frame(Type=c("Influenza A", "Influenza B"),
+                       Number=c(nr_ia,nr_ib))
+  }
+```
+
+`r hu`
+
+```{r human_subtypes_proportion}
+if (sum(str_detect(folder_list,"^human$")) > 0) {
+  knitr::kable(inf_human)}
+```
+
+\
+Human subtypes identified in the run:\
+
+```{r human_plots, comment=NA}
+#plot human data
+if (sum(str_detect(folder_list,"^human$")) > 0) {
+  inf_human2 <- inf_human %>% 
+    arrange(desc(Type)) %>%
+    mutate(prop = Number / sum(inf_human$Number) *100) %>%
+    mutate(ypos = cumsum(prop) - 0.5*prop ) %>% ggplot(aes(x="", y=prop, fill=Type)) + geom_bar(stat="identity") + coord_polar("y", start=0) + 
+    theme_void()  + scale_fill_manual(values=c("darkseagreen4","#ccd5ae")) +
+    geom_text(aes(y = ypos, label =format(round(prop, 2), nsmall = 2)), color = "black", size=5)+ ggtitle("a) Type of Human Samples") +
+    theme(axis.text=element_blank(), axis.ticks=element_blank(), plot.title = element_text(size = 10, face = "bold")) + ylab(" ") + xlab(" ")
+  
+  #Determine and plot the different subtypes of human influenza
+  human_subtypes = data.frame(Subtype=c("A/H1N1", "A/H3N2", "B/Victoria"), Number=c(length(grep("H1N1", df_hu$V3)),length(grep("H3N2", df_hu$V3)), length(grep("Victoria", df_hu$V3)) ))
+  human_subtypes2 = human_subtypes %>% 
+    arrange(desc(Subtype)) %>%
+    mutate(prop = Number / sum(human_subtypes$Number) *100) %>%
+    mutate(ypos = cumsum(prop) - 0.5*prop ) %>% 
+    ggplot(aes(x="", y=prop, fill=Subtype)) + geom_bar(stat="identity") + coord_polar("y", start=0) + 
+    theme_void()  + scale_fill_manual(values=c("darkseagreen4","#52b788","#ccd5ae")) +
+    geom_text(aes(y = ypos, label =format(round(prop, 2), nsmall = 2)), color = "black", size=5) + ggtitle("b) Proportion of Human Subtypes") +
+    theme(axis.text=element_blank(), axis.ticks=element_blank(), plot.title = element_text(size = 10, face = "bold")) + ylab(" ") + xlab(" ")
+  
+  knitr::kable(human_subtypes) 
+} else {cat("None")}
+```
+
+
+
+```{r, fig.width=7, fig.height=3,echo=FALSE, fig.cap="\\label{fig:fig2}Human Samples"}
+  #plot the human pie charts.
+if (sum(str_detect(folder_list,"^human$")) == 1) {
+  grid.arrange(inf_human2, human_subtypes2, nrow = 1)}
+```
+
+
+```{r hu_failed, fig.width=7, fig.height=7, echo=FALSE, results=FALSE, fig.cap="\\label{fig:fig3}The success rate of the human samples."}
+#Determine the segments failure rate.
+if (sum(str_detect(folder_list,"^human$")) == 1) {
+  rate <- success_rate(df_hu)
+  print(rate$plot)
+  } else {print("There is a problem with the number of human folders")} 
+
+```
+
+\pagebreak
+
+
+List of samples with **complete genotype**:
+
+```{r precise_hu_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^human$")) == 1) {
+  if (nrow(rate$precise[2:3] > 0)) {
+    knitr::kable(rate$precise[2:3]) }
+  else {cat("No complete genotypes") }
+  } else {cat("Empty table.")}
+```
+
+\
+List of samples with **partial genotype**:
+
+```{r unique_hu_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^human$")) == 1) {  
+  if (nrow(rate$uniqueg[2:3]) > 0) {
+    knitr::kable(rate$uniqueg[2:3])}
+  else {cat("No partial genotypes")}
+} else {cat("Empty table.")}
+```
+
+
+\
+List of samples with **partial and indeterminate genotype**:
+
+```{r indet_hu_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^human$")) == 1) {  
+  if (nrow(rate$indetg[2:3]) > 0) {
+    knitr::kable(rate$indetg[2:3])}
+  else {cat("No indeterminate genotypes")}
+} else {cat("Empty table.")}
+```
+
+
+\
+List of samples with **new genotype**:
+
+```{r new_hu_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^human$")) == 1) {  
+  if (nrow(rate$new[2:3]) > 0) {
+    knitr::kable(rate$new[2:3])}
+  else { cat("No new genotypes") }
+} else {cat("Empty table.")}
+```
+
+\
+
+```{r hu_failed_sampeles}
+if (sum(str_detect(folder_list,"^human$")) == 1) { 
+  if (sum(str_detect(df_hu$V1, "Empty")) == 1) { 
+    a="List of failed samples"
+    } else { 
+      a="There are no failed samples."
+    }} else {a="There are no human failed samples to show."}
+```
+
+**`r a`**
+
+```{r empty_human}
+if (sum(str_detect(folder_list,"^human$")) == 1) { 
+if (sum(str_detect(df_hu$V1, "Empty")) == 1) { 
+  failed_samples <- find_failed_samples(df_hu)
+  knitr::kable(failed_samples)
+}}
+```
+
+\pagebreak
+
+## **Swine samples**
+
+```{r detect_swines}
+if (sum(str_detect(folder_list,"^swine$")) > 0) {
+  sw_nr= samples_nr[samples_nr$Folder=="Swine",2]
+  a = paste0("There are ",sw_nr," swine samples in this run.")
+  opts_knit$set(root.dir = dir_sw, echo = TRUE)
+  genotypes_sw = list.files(dir_sw, pattern="genotypes_")
+  genotypes_sw = paste(dir_sw,"/",genotypes_sw, sep="")
+  df_sw=read.delim(genotypes_sw, sep="\t", header=F, col.names = c("V1", "V2", "V3", "V4", "V5", "V6"))
+} else if (sum(str_detect(folder_list,"^swine$")) == 0) {
+  a ="There are no swine samples in this run."
+}
+```
+
+`r a`\
+\
+
+```{r success_rate_sw, fig.width=7, fig.height=7, echo=FALSE, results=FALSE, fig.cap="The success rate of the swine samples."}
+if (sum(str_detect(folder_list,"^swine$")) == 1) {
+  rate <- success_rate(df_sw)
+  plot <- rate$plot
+  print(plot)
+  } else {print("There is a problem with the number of swine folders")}
+
+```
+
+\
+List of samples with **complete genotypes**:
+
+```{r precise_sw_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^swine$")) == 1) {
+  if (nrow(rate$precise[2:3]) > 0) {knitr::kable(rate$precise[2:3])}
+  else {cat("No full genotypes")}
+  }else {cat("Empty table.")}
+```
+
+\
+List of samples with **partial genotype**:
+
+```{r unique_sw_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^swine$")) == 1) {  
+  if (nrow(rate$uniqueg[2:3]) > 0) {
+    knitr::kable(rate$uniqueg[2:3])}
+  else {cat("No partial genotypes")}
+}else {cat("Empty table.")}
+```
+
+\
+List of samples with **partial and indeterminate genotype**:
+
+```{r indet_sw_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^swine$")) == 1) {  
+  if (nrow(rate$indetg[2:3]) > 0) {
+    knitr::kable(rate$indetg[2:3])}
+  else {cat("No indeterminate genotypes")}
+}else {cat("Empty table.")}
+```
+
+\
+List of samples with **new genotype**:
+
+```{r new_sw_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^swine$")) == 1) {  
+  if (nrow(rate$new[2:3]) > 0) {
+    knitr::kable(rate$new[2:3])}
+  else {cat("No new genotypes")}
+}else {cat("Empty table.")}
+```
+
+```{r sw_failed_sampeles}
+if (sum(str_detect(folder_list,"^swine$")) == 1) {  
+  if (sum(str_detect(df_sw$V1, "Empty")) == 1) { 
+    a="List of failed samples"
+    } else { 
+      a="There are no failed samples."
+    }} else {a = "There are no swine failed samples to show."}
+```
+
+**`r a`**
+
+```{r empty_sw}
+if (sum(str_detect(folder_list,"^swine$")) == 1) {  
+  if (sum(str_detect(df_sw$V1, "Empty")) == 1) { 
+    failed_samples <- find_failed_samples(df_sw)
+    knitr::kable(failed_samples)
+  }}
+```
+
+\pagebreak
+
+## **Avian samples**
+
+```{r detect_avian}
+if (sum(str_detect(folder_list,"^avian$")) == 0) {
+  av ="There are no avian samples in this run." 
+  } else if (sum(str_detect(folder_list,"^avian$")) == 1) {
+  av_nr= samples_nr[samples_nr$Folder=="Avian",2]
+  av = paste0("There are ",av_nr," avian samples in this run.")
+  opts_knit$set(root.dir = dir_av, echo = TRUE)
+  genotypes_av = list.files(dir_av, pattern="genotypes_")
+  genotypes_av = paste(dir_av,"/",genotypes_av, sep="")
+  df_av=read.delim(genotypes_av, sep="\t", header=F, col.names = c("V1", "V2", "V3", "V4", "V5", "V6"))
+  }
+```
+
+`r av`\
+\
+
+```{r success_rate_av, echo=FALSE, results=FALSE,  fig.cap="\\label{fig:fig5}The success rate of the avian samples."}
+if (sum(str_detect(folder_list,"^avian$")) == 1) {
+  rate <- success_rate(df_av)
+  plot <- rate$plot
+  print(plot)} else {print("There is a problem with the number of avian folders")}
+```
+
+\
+List of samples with **HA and NA genotyped**:
+
+```{r precise_av_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^avian$")) == 1) {
+  if (nrow(rate$precise[2:3]) > 0) {knitr::kable(rate$precise[2:3])}
+  else {cat("No full genotypes")}
+  }else {cat("Empty table.")}
+```
+
+\
+List of samples with **partial and indeterminate subtypes**:
+
+```{r indet_av_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^avian$")) == 1) {  
+  if (nrow(rate$indetg[2:3]) > 0) {
+    knitr::kable(rate$indetg[2:3])}
+  else {cat("No indeterminate subtypes")}
+}else {cat("Empty table.")}
+```
+
+\
+List of samples with **new genotype**:
+
+```{r new_av_genotypes, comment=NA}
+if (sum(str_detect(folder_list,"^avian$")) == 1) {  
+  if (nrow(rate$new[2:3]) > 0) {
+    knitr::kable(rate$new[2:3])}
+  else {cat("No new genotypes")}
+}else {cat("Empty table.")}
+```
+
+```{r av_failed_sampeles}
+if (sum(str_detect(folder_list,"^avian$")) == 1) {  
+  if (sum(str_detect(df_av$V1, "Empty")) == 1) { 
+    a="List of failed samples"
+    } else { 
+      a="There are no failed samples."
+    }} else{ a="The are no failed avian samples to show."}
+```
+
+**`r a`**
+
+```{r empty_av}
+if (sum(str_detect(folder_list,"^avian$")) == 1) { 
+  if (sum(str_detect(df_av$V1, "Empty")) == 1) { 
+    failed_samples <- find_failed_samples(df_av)
+    knitr::kable(failed_samples)
+  }} 
+```
+
+## *Avian Genotypes - Internal segments*
+```{r gt_avian, echo=FALSE,comment=NA}
+if (sum(str_detect(folder_list,"^avian$")) == 0) {
+  cat("No data to show.")
+  } else if (sum(str_detect(folder_list,"avian")) == 1) {
+  opts_knit$set(root.dir = gt_av, echo = TRUE)
+  files = list.files(gt_av, pattern="_full_genotypes.pdf", full.names = TRUE)
+  knitr::include_graphics(files,  error = FALSE)
+  }
+```
+
+
+\pagebreak
+# **Pairwise distance plots**
+
+## *Human plots*
+
+```{r pw_hu, echo=FALSE, out.width="50%", comment=NA}
+if (sum(str_detect(folder_list,"^human$")) == 0) {
+  cat("There are no human plots to show.") 
+  } else if (sum(str_detect(folder_list,"human")) == 1) {
+  opts_knit$set(root.dir = pw_hu, echo = TRUE)
+  files = list.files(pw_hu, pattern="Pairwise_",full.names = TRUE)
+  knitr::include_graphics(files,  error = FALSE)
+  }
+```
+
+\pagebreak
+
+## *Swine plots*
+
+```{r pw_swine, echo=FALSE, out.width="50%", comment=NA}
+if (sum(str_detect(folder_list,"^swine$")) == 0) {
+  cat("There are no swine plots to show.")  
+  } else if (sum(str_detect(folder_list,"swine")) == 1) {
+  opts_knit$set(root.dir = pw_sw, echo = TRUE)
+  files = list.files(pw_sw, pattern="Pairwise_",full.names = TRUE)
+  knitr::include_graphics(files,  error = FALSE)
+  }
+```
+
+\pagebreak
+
+## *Avian plots*
+
+```{r pw_avian, echo=FALSE,comment=NA, out.width="50%"}
+if (sum(str_detect(folder_list,"^avian$")) == 0) {
+  cat("There are no avian plots to show.") 
+  } else if (sum(str_detect(folder_list,"avian")) == 1) {
+  opts_knit$set(root.dir = pw_av, echo = TRUE)
+  files = list.files(pw_av, pattern="Pairwise_", full.names = TRUE)
+  knitr::include_graphics(files,  error = FALSE)
+  }
+```
