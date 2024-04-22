@@ -1,0 +1,36 @@
+SI-Swine1
+83.7 Mbp, 100% bp kept, 161 bp mean, 98% Q20, 97% Q30
+	     PB2: Identity 0.979, depth 3.17e+03, coverage 1.000
+	     PB1: Identity 0.972, depth 9.76e+02, coverage 1.000
+	     PA:  Identity 0.980, depth 7.95e+02, coverage 0.974
+		ERROR PAX: Protein stops early at segment pos 724 after 233 aa, reference is 252 aa
+	     HA:  Identity 0.981, depth 1.97e+03, coverage 1.000
+	     NP:  Identity 0.977, depth 3.24e+03, coverage 1.000
+		      Sequence has 1 low-depth base
+	     NA:  Identity 0.975, depth 2.61e+03, coverage 1.000
+	     MP:  Identity 0.984, depth 2.48e+04, coverage 1.000
+	     NS:  Identity 0.974, depth 3.67e+04, coverage 1.000
+
+SI-Swine2
+71.3 Mbp, 99% bp kept, 148 bp mean, 97% Q20, 96% Q30
+	     PB2: Identity 0.982, depth 2.34e+03, coverage 1.000
+	     PB1: Identity 0.987, depth 8.11e+02, coverage 1.000
+	     PA:  Identity 0.991, depth 2.20e+03, coverage 1.000
+	     HA:  Identity 0.969, depth 2.41e+03, coverage 0.987
+	     NP:  Identity 0.990, depth 4.35e+03, coverage 1.000
+	     NA:  Identity 0.979, depth 2.55e+03, coverage 1.000
+	     MP:  Identity 0.987, depth 2.33e+04, coverage 1.000
+	     NS:  Identity 0.979, depth 1.92e+04, coverage 1.000
+
+SI-Swine3
+86.1 Mbp, 99% bp kept, 168 bp mean, 96% Q20, 95% Q30
+	     PB2: Identity 0.982, depth 2.63e+03, coverage 1.000
+	     PB1: Identity 0.987, depth 6.36e+02, coverage 1.000
+	     PA:  Identity 0.991, depth 2.34e+03, coverage 1.000
+	     HA:  Identity 0.969, depth 2.49e+03, coverage 0.999
+	     NP:  Identity 0.990, depth 9.60e+03, coverage 1.000
+	     NA:  Identity 0.979, depth 3.65e+03, coverage 1.000
+	     MP:  Identity 0.987, depth 2.55e+04, coverage 1.000
+	     NS:  Identity 0.979, depth 1.95e+04, coverage 1.000
+
+

@@ -1,0 +1,4 @@
+Precise genotypes:
+	IA-Human1	H3N2
+	IA-Human2	H1N1
+

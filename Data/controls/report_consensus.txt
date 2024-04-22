@@ -1,0 +1,43 @@
+C-Control1
+19.3 Kbp, 75% bp kept, 197 bp mean, 57% Q20, 48% Q30
+	FAIL PB2: Missing segment
+	FAIL PB1: Missing segment
+	FAIL PA:  Missing segment
+	FAIL HA:  Missing segment
+	FAIL NP:  Identity 0.816, depth 1.55e+00, coverage 0.184
+		ERROR Coverage is low at 0.184
+		      Skipping additional errors...
+	FAIL NA:  Identity 0.799, depth 6.01e+00, coverage 0.177
+		ERROR Coverage is low at 0.177
+		      Skipping additional errors...
+	FAIL MP:  Identity 0.905, depth 1.12e+00, coverage 0.447
+		ERROR Coverage is low at 0.447
+		      Skipping additional errors...
+	FAIL NS:  Identity 1.000, depth 1.00e+00, coverage 0.385
+		ERROR Coverage is low at 0.385
+		      Skipping additional errors...
+
+C-Control2
+33.0 Mbp, 89% bp kept, 225 bp mean, 79% Q20, 73% Q30
+	     PB2: Identity 0.933, depth 1.72e+02, coverage 1.000
+		      Sequence has 2 low-depth bases
+	     PB1: Identity 0.921, depth 1.90e+02, coverage 1.000
+	     PA:  Identity 0.946, depth 2.41e+02, coverage 1.000
+	     HA:  Identity 0.927, depth 5.46e+02, coverage 1.000
+	     NP:  Identity 0.955, depth 1.51e+03, coverage 1.000
+	     NA:  Identity 0.933, depth 1.48e+03, coverage 1.000
+	     MP:  Identity 0.972, depth 9.84e+03, coverage 1.000
+	     NS:  Identity 0.940, depth 5.71e+03, coverage 1.000
+
+C-Control3
+80.8 Mbp, 90% bp kept, 226 bp mean, 80% Q20, 74% Q30
+	     PB2: Identity 0.933, depth 5.18e+02, coverage 1.000
+	     PB1: Identity 0.933, depth 4.02e+02, coverage 1.000
+	     PA:  Identity 0.946, depth 6.40e+02, coverage 1.000
+	     HA:  Identity 0.927, depth 1.41e+03, coverage 1.000
+	     NP:  Identity 0.955, depth 3.74e+03, coverage 1.000
+	     NA:  Identity 0.933, depth 4.00e+03, coverage 1.000
+	     MP:  Identity 0.972, depth 2.43e+04, coverage 1.000
+	     NS:  Identity 0.942, depth 1.52e+04, coverage 1.000
+
+

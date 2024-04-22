@@ -1,0 +1,5 @@
+Precise genotypes:
+	SI-Swine1	H1avN2sw-5
+	SI-Swine2	H1pdmN1av-2
+	SI-Swine3	H1pdmN1av-2
+

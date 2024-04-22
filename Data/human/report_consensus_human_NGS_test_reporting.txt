@@ -1,0 +1,24 @@
+IA-Human1
+91.8 Mbp, 99% bp kept, 238 bp mean, 96% Q20, 94% Q30
+	     PB2: Identity 0.979, depth 7.90e+02, coverage 1.000
+	     PB1: Identity 0.981, depth 6.92e+02, coverage 1.000
+		      PB1: Protein stops late at segment pos 2301 after 759 aa, reference stops at 2298 after 757 aa
+	     PA:  Identity 0.981, depth 8.04e+02, coverage 1.000
+	     HA:  Identity 0.991, depth 3.63e+03, coverage 1.000
+	     NP:  Identity 0.975, depth 5.59e+03, coverage 0.976
+	     NA:  Identity 0.992, depth 5.04e+03, coverage 1.000
+	     MP:  Identity 0.985, depth 3.12e+04, coverage 1.000
+	     NS:  Identity 0.983, depth 6.41e+03, coverage 1.000
+
+IA-Human2
+143.1 Mbp, 99% bp kept, 231 bp mean, 95% Q20, 93% Q30
+	     PB2: Identity 0.983, depth 1.70e+03, coverage 1.000
+	     PB1: Identity 0.991, depth 6.04e+02, coverage 1.000
+	     PA:  Identity 0.988, depth 1.22e+03, coverage 1.000
+	     HA:  Identity 0.981, depth 1.61e+03, coverage 1.000
+	     NP:  Identity 0.980, depth 4.58e+03, coverage 1.000
+	     NA:  Identity 0.988, depth 8.85e+03, coverage 1.000
+	     MP:  Identity 0.988, depth 5.36e+04, coverage 1.000
+	     NS:  Identity 0.999, depth 5.02e+04, coverage 1.000
+
+

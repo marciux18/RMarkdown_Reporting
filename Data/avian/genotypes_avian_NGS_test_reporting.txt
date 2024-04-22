@@ -1,0 +1,4 @@
+Precise genotypes:
+	AI-Avian1	H5N1
+	AI-Avian2	H5N1
+

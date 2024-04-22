@@ -1,0 +1,25 @@
+Empty samples:
+	C-Control1
+
+New genotypes:
+	C-Control2
+		PB2	P nothing
+		PB1	P nothing
+		PA	P nothing
+		HA	P nothing
+		NP	P nothing
+		NA	P nothing
+		MP	P nothing
+		NS	P nothing
+
+	C-Control3
+		PB2	P nothing
+		PB1	P nothing
+		PA	P nothing
+		HA	P nothing
+		NP	P nothing
+		NA	P nothing
+		MP	P nothing
+		NS	P nothing
+
+

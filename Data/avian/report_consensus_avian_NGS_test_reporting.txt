@@ -1,0 +1,23 @@
+AI-Avian1
+30.0 Mbp, 89% bp kept, 225 bp mean, 80% Q20, 74% Q30
+	     PB2: Identity 0.978, depth 4.01e+02, coverage 1.000
+	     PB1: Identity 0.987, depth 3.61e+02, coverage 1.000
+	     PA:  Identity 0.987, depth 1.01e+03, coverage 1.000
+	     HA:  Identity 0.987, depth 8.92e+02, coverage 1.000
+	     NP:  Identity 0.987, depth 1.21e+03, coverage 1.000
+	     NA:  Identity 0.987, depth 1.25e+03, coverage 1.000
+	     MP:  Identity 0.989, depth 6.02e+03, coverage 1.000
+	     NS:  Identity 0.985, depth 5.27e+03, coverage 1.000
+
+AI-Avian2
+27.7 Mbp, 90% bp kept, 226 bp mean, 81% Q20, 74% Q30
+	     PB2: Identity 0.970, depth 2.22e+02, coverage 1.000
+	     PB1: Identity 0.985, depth 1.33e+02, coverage 1.000
+	     PA:  Identity 0.985, depth 4.82e+02, coverage 1.000
+	     HA:  Identity 0.984, depth 2.99e+02, coverage 1.000
+	     NP:  Identity 0.986, depth 6.88e+02, coverage 1.000
+	     NA:  Identity 0.987, depth 1.57e+03, coverage 1.000
+	     MP:  Identity 0.992, depth 8.59e+03, coverage 1.000
+	     NS:  Identity 0.989, depth 4.56e+03, coverage 1.000
+
+
